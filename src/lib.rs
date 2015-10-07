@@ -1,3 +1,7 @@
+#![allow(dead_code)]
+
+mod buffed_io;
+
 pub const SHN_CRYPT_HEADER_LEN: usize = 36;
 
 /// Represents a data type within a `SHN` File.
@@ -15,6 +19,7 @@ pub enum ShnDataType {
 }
 
 /// Represents a single data cell within the `SHN`-File
+#[derive(Clone, PartialEq)]
 pub enum ShnCell {
 	StringFixedLen(String),
 	StringZeroTerminated(String),
@@ -92,8 +97,96 @@ pub struct ShnColumn {
 	data_length:	u32,
 }
 
+impl ShnColumn {
+	pub fn new_string_fixed_len(name: &str, len: u32) -> Self {
+		ShnColumn {
+			name:				name.to_string(),
+			data_type:			ShnDataType::StringFixedLen,
+			data_length:		len,
+		}
+	}
+
+	pub fn new_string_terminated(name: &str) -> Self {
+		ShnColumn {
+			name:				name.to_string(),
+			data_type:			ShnDataType::StringZeroTerminated,
+			data_length:		0,	// actually no idea what this is supposed to
+									// be.
+		}
+	}
+
+	pub fn new_byte(name: &str) -> Self {
+		ShnColumn {
+			name:				name.to_string(),
+			data_type:			ShnDataType::Byte,
+			data_length:		1,
+		}
+	}
+
+	pub fn new_signed_byte(name: &str) -> Self {
+		ShnColumn {
+			name:				name.to_string(),
+			data_type:			ShnDataType::SignedByte,
+			data_length:		1,
+		}
+	}
+
+	pub fn new_unsigned_short(name: &str) -> Self {
+		ShnColumn {
+			name:				name.to_string(),
+			data_type:			ShnDataType::UnsignedShort,
+			data_length:		2,
+		}
+	}
+
+	pub fn new_signed_short(name: &str) -> Self {
+		ShnColumn {
+			name:				name.to_string(),
+			data_type:			ShnDataType::SignedShort,
+			data_length:		2,
+		}
+	}
+
+	pub fn new_unsigned_integer(name: &str) -> Self {
+		ShnColumn {
+			name:				name.to_string(),
+			data_type:			ShnDataType::UnsignedInteger,
+			data_length:		4,
+		}
+	}
+
+	pub fn new_signed_integer(name: &str) -> Self {
+		ShnColumn {
+			name:				name.to_string(),
+			data_type:			ShnDataType::SingedInteger,
+			data_length:		4,
+		}
+	}
+
+	pub fn new_single_floating_point(name: &str) -> Self {
+		ShnColumn {
+			name:				name.to_string(),
+			data_type:			ShnDataType::SingleFloatingPoint,
+			data_length:		4,
+		}
+	}
+}
+
+#[derive(Clone)]
+pub struct ShnSchema {
+	columns:		Vec<ShnColumn>,
+}
+
+impl ShnSchema {
+	pub fn new() -> Self {
+		ShnSchema {
+			columns:	Vec::new(),
+		}
+	}
+}
+
 #[cfg(test)]
-mod ShnCell_TESTS {
+mod shn_cell_tests {
 	use super::{ShnCell, ShnDataType, };
 
 	#[test]
