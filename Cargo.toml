@@ -2,3 +2,6 @@
 name = "shn"
 version = "0.1.0"
 authors = ["skeleten <skele@ymail.com>"]
+
+[dependencies]
+encoding = "0.2"

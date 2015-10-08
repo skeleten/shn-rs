@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+extern crate encoding;
 
 mod buffed_io;
 
@@ -90,7 +91,7 @@ impl ShnCell {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct ShnColumn {
 	name:			String,
 	data_type:		ShnDataType,
@@ -172,7 +173,7 @@ impl ShnColumn {
 	}
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct ShnSchema {
 	columns:		Vec<ShnColumn>,
 }
@@ -183,6 +184,39 @@ impl ShnSchema {
 			columns:	Vec::new(),
 		}
 	}
+}
+
+pub struct ShnRow<'a> {
+	// We don't want to allow altering the schema while already having any data.
+	schema:		&'a ShnSchema,
+	data:		Vec<ShnCell>
+}
+
+pub struct ShnFile<'a> {
+	crypt_header:	[u8; SHN_CRYPT_HEADER_LEN],
+	header:			u32, // or was it u16?
+	schema:			ShnSchema,
+	data:			Vec<ShnRow<'a>>
+}
+
+impl<'a> ShnFile<'a> {
+
+	pub fn get_schema(&'a self) -> &'a ShnSchema {
+		&self.schema
+	}
+
+	pub fn append_row(&mut self, row: ShnRow<'a>) -> Result<(), ShnError> {
+		if row.schema != &self.schema {
+			Err(ShnError::InvalidSchema)
+		} else {
+			self.data.push(row);
+			Ok(())
+		}
+	}
+}
+
+pub enum ShnError {
+	InvalidSchema,
 }
 
 #[cfg(test)]
