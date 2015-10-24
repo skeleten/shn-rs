@@ -1,9 +1,21 @@
 #![allow(dead_code)]
 extern crate encoding;
+extern crate byteorder;
 
 mod buffed_io;
+mod iterex;
+
+use std::io::{ Read, Write, Cursor};
+
+use byteorder::{ReadBytesExt, };
+use encoding::{Encoding, DecoderTrap, };
+
+use iterex::{ReverseIterator, IteratorEx, };
 
 pub const SHN_CRYPT_HEADER_LEN: usize = 36;
+
+pub type Result<T> = std::result::Result<T, ShnError>;
+pub type Endianess = byteorder::BigEndian;
 
 /// Represents a data type within a `SHN` File.
 #[derive(Clone, PartialEq)]
@@ -34,7 +46,7 @@ pub enum ShnCell {
 }
 
 impl ShnDataType {
-	fn id_to_data_type(id: u32) -> ShnDataType {
+	fn from_id(id: u32) -> ShnDataType {
 		match id {
 			1 | 9 | 24 			=> ShnDataType::StringFixedLen,
 			26 					=> ShnDataType::StringZeroTerminated,
@@ -49,7 +61,7 @@ impl ShnDataType {
 		}
 	}
 
-	fn data_type_to_id(data_type: ShnDataType) -> u32 {
+	fn to_id(data_type: ShnDataType) -> u32 {
 		// as often multiple id's match to the same type, we'll always return
 		// the lowest id.
 		match data_type {
@@ -95,11 +107,11 @@ impl ShnCell {
 pub struct ShnColumn {
 	name:			String,
 	data_type:		ShnDataType,
-	data_length:	u32,
+	data_length:	i32,
 }
 
 impl ShnColumn {
-	pub fn new_string_fixed_len(name: &str, len: u32) -> Self {
+	pub fn new_string_fixed_len(name: &str, len: i32) -> Self {
 		ShnColumn {
 			name:				name.to_string(),
 			data_type:			ShnDataType::StringFixedLen,
@@ -205,7 +217,7 @@ impl<'a> ShnFile<'a> {
 		&self.schema
 	}
 
-	pub fn append_row(&mut self, row: ShnRow<'a>) -> Result<(), ShnError> {
+	pub fn append_row(&mut self, row: ShnRow<'a>) -> Result<()> {
 		if row.schema != &self.schema {
 			Err(ShnError::InvalidSchema)
 		} else {
@@ -217,6 +229,89 @@ impl<'a> ShnFile<'a> {
 
 pub enum ShnError {
 	InvalidSchema,
+	InvalidFile,
+	InvalidEncoding,
+}
+
+pub struct ShnReader;
+
+impl ShnReader {
+	pub fn read_from<'a, T: Read>(mut source: T, enc: &Encoding) -> Result<ShnFile<'a>> {
+		let crypt_header = try!(ShnReader::read_crypt_header(&mut source));
+		let data_length = try!(source.read_u32::<Endianess>().map_err(|_| ShnError::InvalidFile));
+		let mut data = vec![0; data_length as usize];
+		try!(source.read(&mut data[..]).map_err(|_| ShnError::InvalidFile));
+		ShnReader::decrypt(&mut data[..]);
+		let mut reader = Cursor::new(data);
+
+		let header = try!(reader.read_u32::<Endianess>().map_err(|_| ShnError::InvalidFile));
+		let record_count = try!(reader.read_u32::<Endianess>().map_err(|_| ShnError::InvalidFile));
+		let default_len = try!(reader.read_u32::<Endianess>().map_err(|_| ShnError::InvalidFile));
+		let colmn_count = try!(reader.read_u32::<Endianess>().map_err(|_| ShnError::InvalidFile));
+		let schema = try!(ShnReader::read_schema(&mut reader,
+												 colmn_count,
+												 default_len as i32,
+												 enc));
+
+		// TODO: Decrypt the HEK out of this data, then continue to
+		// > Read schema
+		// > read rows
+
+		Err(ShnError::InvalidFile)
+	}
+
+	fn read_crypt_header<T: Read>(source: &mut T) -> Result<[u8; SHN_CRYPT_HEADER_LEN]> {
+		let mut buffer = [0; SHN_CRYPT_HEADER_LEN];
+		try!(source.read(&mut buffer).map_err(|_| ShnError::InvalidFile));
+		Ok(buffer)
+	}
+
+	fn decrypt(data: &mut [u8]) {
+		let mut num = data.len() as u8;
+		for i in (0..data.len()).reverse() {
+			let old_content = data[i];
+			data[i] = old_content ^ num;
+			// black magic.. no idea how it works. its just tranlated from the
+			// original version from Cedric.. this really needs some cleanup
+			let mut num3 = i as u8;
+			num3 = num3 & 15;
+			num3 = num3 + 0x55;
+			num3 = num3 ^ ((i as u8) * 11);
+			num3 = num3 ^ num;
+			num3 = num3 ^ 170;
+			num = num3;
+		}
+	}
+
+	fn read_schema<T: Read>(source: &mut T,
+							column_count: u32,
+							expected_len: i32,
+							enc: &Encoding) -> Result<ShnSchema> {
+		let mut columns = Vec::with_capacity(column_count as usize);
+		let mut len = 0;
+		for _ in 0..column_count {
+			let mut buf = vec![0; 48];
+			try!(source.read(&mut buf[..]).map_err(|_| ShnError::InvalidFile));
+			let name = try!(enc.decode(&buf[..], DecoderTrap::Strict)
+							.map_err(|_| ShnError::InvalidEncoding));
+			let ctype = try!(source.read_u32::<Endianess>().map_err(|_| ShnError::InvalidFile));
+			let clen = try!(source.read_i32::<Endianess>().map_err(|_| ShnError::InvalidFile));
+			columns.push(ShnColumn {
+				name: name,
+				data_type: ShnDataType::from_id(ctype),
+				data_length: clen,
+			});
+			len = len + clen;
+		}
+
+		if len != expected_len {
+			Err(ShnError::InvalidSchema)
+		} else {
+			Ok(ShnSchema {
+				columns: columns,
+			})
+		}
+	}
 }
 
 #[cfg(test)]

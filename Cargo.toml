@@ -5,3 +5,4 @@ authors = ["skeleten <skele@ymail.com>"]
 
 [dependencies]
 encoding = "0.2"
+byteorder = "0.3"
