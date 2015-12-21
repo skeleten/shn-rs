@@ -5,12 +5,12 @@ extern crate byteorder;
 mod buffed_io;
 mod iterex;
 
-use std::io::{ Read, Write, Cursor};
+use std::io::{ Read, Cursor};
 
 use byteorder::{ReadBytesExt, };
-use encoding::{Encoding, DecoderTrap, };
+use encoding::{Encoding, DecoderTrap };
 
-use iterex::{ReverseIterator, IteratorEx, };
+use iterex::{IteratorEx, };
 
 pub const SHN_CRYPT_HEADER_LEN: usize = 36;
 
@@ -26,7 +26,7 @@ pub enum ShnDataType {
 	SignedByte,
 	SignedShort,
 	UnsignedShort,
-	SingedInteger,
+	SignedInteger,
 	UnsignedInteger,
 	SingleFloatingPoint,
 }
@@ -40,7 +40,7 @@ pub enum ShnCell {
 	SignedByte(i8),
 	SignedShort(i16),
 	UnsignedShort(u16),
-	SingedInteger(i32),
+	SignedInteger(i32),
 	UnsignedInteger(u32),
 	SingleFloatingPoint(f32),
 }
@@ -54,7 +54,7 @@ impl ShnDataType {
 			20					=> ShnDataType::SignedByte,
 			13 | 21				=> ShnDataType::SignedShort,
 			2					=> ShnDataType::UnsignedShort,
-			22					=> ShnDataType::SingedInteger,
+			22					=> ShnDataType::SignedInteger,
 			3 | 11 | 18 | 27	=> ShnDataType::UnsignedInteger,
 			5					=> ShnDataType::SingleFloatingPoint,
 			_					=> unimplemented!(),
@@ -71,7 +71,7 @@ impl ShnDataType {
 			ShnDataType::SignedByte => 20,
 			ShnDataType::SignedShort => 13,
 			ShnDataType::UnsignedShort => 2,
-			ShnDataType::SingedInteger => 22,
+			ShnDataType::SignedInteger => 22,
 			ShnDataType::UnsignedInteger => 3,
 			ShnDataType::SingleFloatingPoint => 5,
 		}
@@ -81,23 +81,23 @@ impl ShnDataType {
 impl ShnCell {
 	pub fn data_type(&self) -> ShnDataType {
 		match self {
-			&ShnCell::StringFixedLen(_) 
+			&ShnCell::StringFixedLen(_)
 				=> ShnDataType::StringFixedLen,
-			&ShnCell::StringZeroTerminated(_) 
+			&ShnCell::StringZeroTerminated(_)
 				=> ShnDataType::StringZeroTerminated,
-			&ShnCell::Byte(_) 
+			&ShnCell::Byte(_)
 				=> ShnDataType::Byte,
-			&ShnCell::SignedByte(_) 
+			&ShnCell::SignedByte(_)
 				=> ShnDataType::SignedByte,
-			&ShnCell::SignedShort(_) 
+			&ShnCell::SignedShort(_)
 				=> ShnDataType::SignedShort,
-			&ShnCell::UnsignedShort(_) 
+			&ShnCell::UnsignedShort(_)
 				=> ShnDataType::UnsignedShort,
-			&ShnCell::SingedInteger(_) 
-				=> ShnDataType::SingedInteger,
-			&ShnCell::UnsignedInteger(_) 
+			&ShnCell::SignedInteger(_)
+				=> ShnDataType::SignedInteger,
+			&ShnCell::UnsignedInteger(_)
 				=> ShnDataType::UnsignedInteger,
-			&ShnCell::SingleFloatingPoint(_) 
+			&ShnCell::SingleFloatingPoint(_)
 				=> ShnDataType::SingleFloatingPoint,
 		}
 	}
@@ -171,7 +171,7 @@ impl ShnColumn {
 	pub fn new_signed_integer(name: &str) -> Self {
 		ShnColumn {
 			name:				name.to_string(),
-			data_type:			ShnDataType::SingedInteger,
+			data_type:			ShnDataType::SignedInteger,
 			data_length:		4,
 		}
 	}
@@ -181,6 +181,58 @@ impl ShnColumn {
 			name:				name.to_string(),
 			data_type:			ShnDataType::SingleFloatingPoint,
 			data_length:		4,
+		}
+	}
+
+	pub fn read<T>(&self, cursor: &mut Cursor<T>, enc: &Encoding) -> Result<ShnCell>
+	 		where T: AsRef<[u8]>{
+		match self.data_type {
+			ShnDataType::StringFixedLen => {
+				let mut buf = Vec::with_capacity(self.data_length as usize);
+				try!(cursor.read(&mut buf[..]).map_err(|_| ShnError::InvalidFile));
+				let str = try!(enc.decode(&buf[..], DecoderTrap::Ignore)
+								.map_err(|_| ShnError::InvalidEncoding));
+				Ok(ShnCell::StringFixedLen(str))
+			},
+			ShnDataType::StringZeroTerminated => {
+				let mut buf = Vec::new();
+				loop {
+					let d = try!(cursor.read_u8().map_err(|_| ShnError::InvalidFile));
+					if d == 0 { break; }
+					buf.push(d);
+				}
+				let str = try!(enc.decode(&buf[..], DecoderTrap::Ignore)
+								.map_err(|_| ShnError::InvalidEncoding));
+				Ok(ShnCell::StringZeroTerminated(str))
+			},
+			ShnDataType::Byte => {
+				let d = try!(cursor.read_u8().map_err(|_| ShnError::InvalidFile));
+				Ok(ShnCell::Byte(d))
+			},
+			ShnDataType::SignedByte => {
+				let d = try!(cursor.read_i8().map_err(|_| ShnError::InvalidFile));
+				Ok(ShnCell::SignedByte(d))
+			},
+			ShnDataType::SignedShort => {
+				let d = try!(cursor.read_i16::<Endianess>().map_err(|_| ShnError::InvalidFile));
+				Ok(ShnCell::SignedShort(d))
+			},
+			ShnDataType::UnsignedShort => {
+				let d = try!(cursor.read_u16::<Endianess>().map_err(|_| ShnError::InvalidFile));
+				Ok(ShnCell::UnsignedShort(d))
+			},
+			ShnDataType::SignedInteger => {
+				let d = try!(cursor.read_i32::<Endianess>().map_err(|_| ShnError::InvalidFile));
+				Ok(ShnCell::SignedInteger(d))
+			},
+			ShnDataType::UnsignedInteger => {
+				let d = try!(cursor.read_u32::<Endianess>().map_err(|_| ShnError::InvalidFile));
+				Ok(ShnCell::UnsignedInteger(d))
+			},
+			ShnDataType::SingleFloatingPoint => {
+				let d = try!(cursor.read_f32::<Endianess>().map_err(|_| ShnError::InvalidFile));
+				Ok(ShnCell::SingleFloatingPoint(d))
+			}
 		}
 	}
 }
@@ -195,6 +247,19 @@ impl ShnSchema {
 		ShnSchema {
 			columns:	Vec::new(),
 		}
+	}
+
+	pub fn read_row<'a, T>(&'a self, reader: &mut Cursor<T>, enc: &Encoding) -> Result<ShnRow<'a>>
+	 		where T: AsRef<[u8]>{
+		let mut buf = Vec::new();
+		for c in self.columns.iter() {
+			let content = try!(c.read(reader, enc));
+			buf.push(content);
+		}
+		Ok(ShnRow {
+			schema: &self,
+			data: buf,
+		})
 	}
 }
 
@@ -212,7 +277,6 @@ pub struct ShnFile<'a> {
 }
 
 impl<'a> ShnFile<'a> {
-
 	pub fn get_schema(&'a self) -> &'a ShnSchema {
 		&self.schema
 	}
@@ -237,14 +301,14 @@ pub struct ShnReader;
 
 impl ShnReader {
 	pub fn read_from<'a, T: Read>(mut source: T, enc: &Encoding) -> Result<ShnFile<'a>> {
-		let crypt_header = try!(ShnReader::read_crypt_header(&mut source));
+		let _crypt_header = try!(ShnReader::read_crypt_header(&mut source));
 		let data_length = try!(source.read_u32::<Endianess>().map_err(|_| ShnError::InvalidFile));
 		let mut data = vec![0; data_length as usize];
 		try!(source.read(&mut data[..]).map_err(|_| ShnError::InvalidFile));
 		ShnReader::decrypt(&mut data[..]);
 		let mut reader = Cursor::new(data);
 
-		let header = try!(reader.read_u32::<Endianess>().map_err(|_| ShnError::InvalidFile));
+		let _header = try!(reader.read_u32::<Endianess>().map_err(|_| ShnError::InvalidFile));
 		let record_count = try!(reader.read_u32::<Endianess>().map_err(|_| ShnError::InvalidFile));
 		let default_len = try!(reader.read_u32::<Endianess>().map_err(|_| ShnError::InvalidFile));
 		let colmn_count = try!(reader.read_u32::<Endianess>().map_err(|_| ShnError::InvalidFile));
@@ -256,8 +320,27 @@ impl ShnReader {
 		// TODO: Decrypt the HEK out of this data, then continue to
 		// > Read schema
 		// > read rows
+		let mut file = ShnFile {
+			crypt_header: _crypt_header,
+			header: _header,
+			schema: schema,
+			data: Vec::new()
+		};
+		ShnReader::read_rows(&mut file, &mut reader, record_count as usize, enc);
+		Ok(file)
+	}
 
-		Err(ShnError::InvalidFile)
+	fn read_rows<'a, T>(file: &mut ShnFile<'a>,
+						reader: &mut Cursor<T>,
+						count: usize,
+						enc: &Encoding) -> Result<()>
+			where T: AsRef<[u8]> {
+
+		for _ in 0..count {
+			let row = try!(file.schema.read_row(reader, enc));
+			file.data.push(row);
+		}
+		Ok(())
 	}
 
 	fn read_crypt_header<T: Read>(source: &mut T) -> Result<[u8; SHN_CRYPT_HEADER_LEN]> {
@@ -271,7 +354,7 @@ impl ShnReader {
 		for i in (0..data.len()).reverse() {
 			let old_content = data[i];
 			data[i] = old_content ^ num;
-			// black magic.. no idea how it works. its just tranlated from the
+			// black magic.. no idea how it works. its just transcriped it from the
 			// original version from Cedric.. this really needs some cleanup
 			let mut num3 = i as u8;
 			num3 = num3 & 15;
@@ -347,7 +430,7 @@ mod shn_cell_tests {
 		let cell = ShnCell::SignedShort(0);
 		assert!(cell.data_type() == ShnDataType::SignedShort);
 	}
-	
+
 	#[test]
 	fn unsigned_short_data_type() {
 		let cell = ShnCell::UnsignedShort(0);
