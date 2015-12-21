@@ -5,6 +5,7 @@ extern crate byteorder;
 mod buffed_io;
 mod iterex;
 
+use std::sync::Arc;
 use std::io::{ Read, Cursor};
 
 use byteorder::{ReadBytesExt, };
@@ -248,41 +249,24 @@ impl ShnSchema {
 			columns:	Vec::new(),
 		}
 	}
-
-	pub fn read_row<'a, T>(&'a self, reader: &mut Cursor<T>, enc: &Encoding) -> Result<ShnRow<'a>>
-	 		where T: AsRef<[u8]>{
-		let mut buf = Vec::new();
-		for c in self.columns.iter() {
-			let content = try!(c.read(reader, enc));
-			buf.push(content);
-		}
-		Ok(ShnRow {
-			schema: &self,
-			data: buf,
-		})
-	}
 }
 
-pub struct ShnRow<'a> {
+pub struct ShnRow {
 	// We don't want to allow altering the schema while already having any data.
-	schema:		&'a ShnSchema,
+	schema:		Arc<ShnSchema>,
 	data:		Vec<ShnCell>
 }
 
-pub struct ShnFile<'a> {
+pub struct ShnFile {
 	crypt_header:	[u8; SHN_CRYPT_HEADER_LEN],
 	header:			u32, // or was it u16?
-	schema:			ShnSchema,
-	data:			Vec<ShnRow<'a>>
+	schema:			Arc<ShnSchema>,
+	data:			Vec<ShnRow>
 }
 
-impl<'a> ShnFile<'a> {
-	pub fn get_schema(&'a self) -> &'a ShnSchema {
-		&self.schema
-	}
-
-	pub fn append_row(&mut self, row: ShnRow<'a>) -> Result<()> {
-		if row.schema != &self.schema {
+impl ShnFile {
+	pub fn append_row(&mut self, row: ShnRow) -> Result<()> {
+		if row.schema != self.schema {
 			Err(ShnError::InvalidSchema)
 		} else {
 			self.data.push(row);
@@ -300,7 +284,7 @@ pub enum ShnError {
 pub struct ShnReader;
 
 impl ShnReader {
-	pub fn read_from<'a, T: Read>(mut source: T, enc: &Encoding) -> Result<ShnFile<'a>> {
+	pub fn read_from<T: Read>(mut source: T, enc: &Encoding) -> Result<ShnFile> {
 		let _crypt_header = try!(ShnReader::read_crypt_header(&mut source));
 		let data_length = try!(source.read_u32::<Endianess>().map_err(|_| ShnError::InvalidFile));
 		let mut data = vec![0; data_length as usize];
@@ -316,31 +300,39 @@ impl ShnReader {
 												 colmn_count,
 												 default_len as i32,
 												 enc));
-
-		// TODO: Decrypt the HEK out of this data, then continue to
-		// > Read schema
-		// > read rows
 		let mut file = ShnFile {
 			crypt_header: _crypt_header,
 			header: _header,
-			schema: schema,
+			schema: Arc::new(schema),
 			data: Vec::new()
 		};
-		ShnReader::read_rows(&mut file, &mut reader, record_count as usize, enc);
+		try!(ShnReader::read_rows(&mut file, &mut reader, record_count as usize, enc));
 		Ok(file)
 	}
 
-	fn read_rows<'a, T>(file: &mut ShnFile<'a>,
+	fn read_rows<T>(file: &mut ShnFile,
 						reader: &mut Cursor<T>,
 						count: usize,
 						enc: &Encoding) -> Result<()>
 			where T: AsRef<[u8]> {
 
 		for _ in 0..count {
-			let row = try!(file.schema.read_row(reader, enc));
+			let row = try!(ShnReader::read_row(file, reader, enc));
 			file.data.push(row);
 		}
 		Ok(())
+	}
+
+	fn read_row<T>(file: &mut ShnFile,
+					reader: &mut Cursor<T>,
+					enc: &Encoding) -> Result<ShnRow>
+			where T: AsRef<[u8]> {
+		let mut data = Vec::new();
+		for c in file.schema.columns.iter() {
+			let d = try!(c.read(reader, enc));
+			data.push(d)
+		}
+		Err(ShnError::InvalidFile)
 	}
 
 	fn read_crypt_header<T: Read>(source: &mut T) -> Result<[u8; SHN_CRYPT_HEADER_LEN]> {
