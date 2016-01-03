@@ -7,16 +7,17 @@ mod iterex;
 
 use std::sync::Arc;
 use std::io::{ Read, Cursor};
+use std::num::Wrapping;
 
 use byteorder::{ReadBytesExt, };
 use encoding::{Encoding, DecoderTrap };
 
 use iterex::{IteratorEx, };
 
-pub const SHN_CRYPT_HEADER_LEN: usize = 36;
+pub const SHN_CRYPT_HEADER_LEN: usize = 0x20;
 
 pub type Result<T> = std::result::Result<T, ShnError>;
-pub type Endianess = byteorder::BigEndian;
+pub type Endianess = byteorder::LittleEndian;
 
 /// Represents a data type within a `SHN` File.
 #[derive(Clone, PartialEq, Debug)]
@@ -49,15 +50,15 @@ pub enum ShnCell {
 impl ShnDataType {
 	fn from_id(id: u32) -> ShnDataType {
 		match id {
-			1 | 9 | 24 			=> ShnDataType::StringFixedLen,
-			26 					=> ShnDataType::StringZeroTerminated,
-			12 | 16				=> ShnDataType::Byte,
-			20					=> ShnDataType::SignedByte,
-			13 | 21				=> ShnDataType::SignedShort,
+			1 | 12 | 16			=> ShnDataType::Byte,
 			2					=> ShnDataType::UnsignedShort,
-			22					=> ShnDataType::SignedInteger,
 			3 | 11 | 18 | 27	=> ShnDataType::UnsignedInteger,
 			5					=> ShnDataType::SingleFloatingPoint,
+			9 | 24				=> ShnDataType::StringFixedLen,
+			13 | 21				=> ShnDataType::SignedShort,
+			20					=> ShnDataType::SignedByte,
+			22					=> ShnDataType::SignedInteger,
+			26					=> ShnDataType::StringZeroTerminated,
 			_					=> unimplemented!(),
 		}
 	}
@@ -66,9 +67,9 @@ impl ShnDataType {
 		// as often multiple id's match to the same type, we'll always return
 		// the lowest id.
 		match data_type {
-			ShnDataType::StringFixedLen			=> 1,
+			ShnDataType::StringFixedLen			=> 9,
 			ShnDataType::StringZeroTerminated 	=> 26,
-			ShnDataType::Byte 					=> 12,
+			ShnDataType::Byte 					=> 1,
 			ShnDataType::SignedByte 			=> 20,
 			ShnDataType::SignedShort			=> 13,
 			ShnDataType::UnsignedShort 			=> 2,
@@ -115,8 +116,7 @@ impl ShnColumn {
 		ShnColumn {
 			name:				name.to_string(),
 			data_type:			ShnDataType::StringZeroTerminated,
-			data_length:		0,	// actually no idea what this is supposed to
-									// be.
+			data_length:		0,
 		}
 	}
 
@@ -184,11 +184,12 @@ impl ShnColumn {
 				try!(cursor.read(&mut buf[..]).map_err(|_| ShnError::InvalidFile));
 				let str = try!(enc.decode(&buf[..], DecoderTrap::Ignore)
 								.map_err(|_| ShnError::InvalidEncoding));
-				Ok(ShnCell::StringFixedLen(str))
+				Ok(ShnCell::StringFixedLen(str.trim_matches('\u{0}').to_string()))
 			},
 			ShnDataType::StringZeroTerminated => {
 				let mut buf = Vec::new();
 				loop {
+					// testing
 					let d = try!(cursor.read_u8().map_err(|_| ShnError::InvalidFile));
 					if d == 0 { break; }
 					buf.push(d);
@@ -242,11 +243,17 @@ impl ShnSchema {
 	}
 }
 
-#[derive(Debug)]
 pub struct ShnRow {
 	// We don't want to allow altering the schema while already having any data.
 	schema:		Arc<ShnSchema>,
-	data:		Vec<ShnCell>
+	pub data:	Vec<ShnCell>
+}
+
+impl std::fmt::Debug for ShnRow {
+	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
+		try!(writeln!(f, "{:?}", self.data));
+		Ok(())
+	}
 }
 
 pub struct ShnFile {
@@ -270,14 +277,15 @@ impl ShnFile {
 
 impl std::fmt::Debug for ShnFile {
 	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
-		writeln!(f, "Shn File {{");
-		writeln!(f, "Header: {:?}", self.header);
-		writeln!(f, "Schema: {:?}", self.schema);
-		writeln!(f, "Data: {:?}\n}}", self.data);
+		try!(writeln!(f, "Shn File {{"));
+		try!(writeln!(f, "Header: {:?}", self.header));
+		try!(writeln!(f, "Schema: {:?}", self.schema));
+		try!(writeln!(f, "Data: {:?}\n}}", self.data));
 		Ok(())
 	}
 }
 
+#[derive(Debug)]
 pub enum ShnError {
 	InvalidSchema,
 	InvalidFile,
@@ -289,7 +297,7 @@ pub struct ShnReader;
 impl ShnReader {
 	pub fn read_from<T: Read>(mut source: T, enc: &Encoding) -> Result<ShnFile> {
 		let crypt_header = try!(ShnReader::read_crypt_header(&mut source));
-		let data_length = try!(source.read_u32::<Endianess>().map_err(|_| ShnError::InvalidFile));
+		let data_length = try!(source.read_i32::<Endianess>().map_err(|_| ShnError::InvalidFile)) - 0x24;
 		let mut data = vec![0; data_length as usize];
 		try!(source.read(&mut data[..]).map_err(|_| ShnError::InvalidFile));
 		ShnReader::decrypt(&mut data[..]);
@@ -331,11 +339,15 @@ impl ShnReader {
 					enc: &Encoding) -> Result<ShnRow>
 			where T: AsRef<[u8]> {
 		let mut data = Vec::new();
+		// don't ask me why..
 		for c in file.schema.columns.iter() {
 			let d = try!(c.read(reader, enc));
 			data.push(d)
 		}
-		Err(ShnError::InvalidFile)
+		Ok(ShnRow {
+			schema: file.schema.clone(),
+			data: data
+		})
 	}
 
 	fn read_crypt_header<T: Read>(source: &mut T) -> Result<[u8; SHN_CRYPT_HEADER_LEN]> {
@@ -351,13 +363,14 @@ impl ShnReader {
 			data[i] = old_content ^ num;
 			// black magic.. no idea how it works. its just transcriped it from the
 			// original version from Cedric.. this really needs some cleanup
-			let mut num3 = i as u8;
-			num3 = num3 & 15;
-			num3 = num3 + 0x55;
-			num3 = num3 ^ ((i as u8) * 11);
-			num3 = num3 ^ num;
-			num3 = num3 ^ 170;
-			num = num3;
+			let mut num3 = Wrapping(i as u8);
+			num3 = num3 & Wrapping(15);
+			num3 = num3 + Wrapping(0x55);
+			num3 = num3 ^ Wrapping(i as u8) * Wrapping(11);
+			num3 = num3 ^ Wrapping(num);
+			num3 = num3 ^ Wrapping(170);
+			let Wrapping(x) = num3;
+			num = x;
 		}
 	}
 
@@ -366,12 +379,18 @@ impl ShnReader {
 							expected_len: i32,
 							enc: &Encoding) -> Result<ShnSchema> {
 		let mut columns = Vec::with_capacity(column_count as usize);
-		let mut len = 0;
+		let mut len = 2; // because of that intrinsic row.
+		// This one seems to be intrinsic
+		columns.push(ShnColumn {
+			name: "__ID__".to_string(),
+			data_type: ShnDataType::UnsignedShort,
+			data_length: 2,
+		});
 		for _ in 0..column_count {
 			let mut buf = vec![0; 48];
 			try!(source.read(&mut buf[..]).map_err(|_| ShnError::InvalidFile));
-			let name = try!(enc.decode(&buf[..], DecoderTrap::Strict)
-							.map_err(|_| ShnError::InvalidEncoding));
+			let name = try!(enc.decode(&buf[..], DecoderTrap::Strict).map_err(|_| ShnError::InvalidEncoding));
+			let name = name.trim_matches('\u{0}').to_string();
 			let ctype = try!(source.read_u32::<Endianess>().map_err(|_| ShnError::InvalidFile));
 			let clen = try!(source.read_i32::<Endianess>().map_err(|_| ShnError::InvalidFile));
 			columns.push(ShnColumn {
@@ -383,70 +402,12 @@ impl ShnReader {
 		}
 
 		if len != expected_len {
-			Err(ShnError::InvalidSchema)
+			println!("length does not equal expected length! {} != {}", len, expected_len);
+			return Err(ShnError::InvalidSchema)
 		} else {
 			Ok(ShnSchema {
 				columns: columns,
 			})
 		}
-	}
-}
-
-#[cfg(test)]
-mod shn_cell_tests {
-	use super::{ShnCell, ShnDataType, };
-
-	#[test]
-	fn fixed_len_string_data_type() {
-		let cell = ShnCell::StringFixedLen("something..".to_string());
-		assert!(cell.data_type() == ShnDataType::StringFixedLen);
-	}
-
-	#[test]
-	fn terminated_string_data_type() {
-		let cell = ShnCell::StringZeroTerminated("something..".to_string());
-		assert!(cell.data_type() == ShnDataType::StringZeroTerminated);
-	}
-
-	#[test]
-	fn byte_data_type() {
-		let cell = ShnCell::Byte(0);
-		assert!(cell.data_type() == ShnDataType::Byte);
-	}
-
-	#[test]
-	fn signed_byte_data_type() {
-		let cell = ShnCell::SignedByte(0);
-		assert!(cell.data_type() == ShnDataType::SignedByte);
-	}
-
-	#[test]
-	fn signed_short_data_type() {
-		let cell = ShnCell::SignedShort(0);
-		assert!(cell.data_type() == ShnDataType::SignedShort);
-	}
-
-	#[test]
-	fn unsigned_short_data_type() {
-		let cell = ShnCell::UnsignedShort(0);
-		assert!(cell.data_type() == ShnDataType::UnsignedShort);
-	}
-
-	#[test]
-	fn signed_integer_data_type() {
-		let cell = ShnCell::SingedInteger(0);
-		assert!(cell.data_type() == ShnDataType::SingedInteger);
-	}
-
-	#[test]
-	fn unsigned_integer_data_type() {
-		let cell = ShnCell::UnsignedInteger(0);
-		assert!(cell.data_type() == ShnDataType::UnsignedInteger);
-	}
-
-	#[test]
-	fn single_float_data_type() {
-		let cell = ShnCell::SingleFloatingPoint(0.0);
-		assert!(cell.data_type() == ShnDataType::SingleFloatingPoint);
 	}
 }
