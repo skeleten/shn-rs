@@ -176,13 +176,17 @@ impl ShnColumn {
 		}
 	}
 
-	pub fn read<T>(&self, cursor: &mut Cursor<T>, enc: &Encoding) -> Result<ShnCell>
-	 		where T: AsRef<[u8]>{
+	pub fn read<T>(&self, cursor: &mut T, enc: &Encoding) -> Result<ShnCell>
+	 		where T: Read {
 		match self.data_type {
 			ShnDataType::StringFixedLen => {
 				let mut buf = Vec::with_capacity(self.data_length as usize);
-				try!(cursor.read(&mut buf[..]).map_err(|_| ShnError::InvalidFile));
-				let str = try!(enc.decode(&buf[..], DecoderTrap::Ignore)
+				let sz = try!(cursor.read(&mut buf[..]).map_err(|_| ShnError::InvalidFile));
+				if sz == 0 {
+					println!("Read no data from cursor -> no string :( ");
+					return Err(ShnError::InvalidFile);
+				}
+				let str = try!(enc.decode(&buf[..], DecoderTrap::Strict)
 								.map_err(|_| ShnError::InvalidEncoding));
 				Ok(ShnCell::StringFixedLen(str.trim_matches('\u{0}').to_string()))
 			},
