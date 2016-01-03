@@ -268,6 +268,16 @@ impl ShnFile {
 
 }
 
+impl std::fmt::Debug for ShnFile {
+	fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
+		writeln!(f, "Shn File {{");
+		writeln!(f, "Header: {:?}", self.header);
+		writeln!(f, "Schema: {:?}", self.schema);
+		writeln!(f, "Data: {:?}\n}}", self.data);
+		Ok(())
+	}
+}
+
 pub enum ShnError {
 	InvalidSchema,
 	InvalidFile,
