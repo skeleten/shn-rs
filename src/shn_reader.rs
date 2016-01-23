@@ -12,7 +12,6 @@ use ::shn::{
     ShnDataType,
     ShnError,
 };
-use ::iterex::IteratorEx;
 use ::encoding::{
     Encoding,
     DecoderTrap,
@@ -85,7 +84,7 @@ impl ShnReader {
 
 	fn decrypt(data: &mut [u8]) {
 		let mut num = data.len() as u8;
-		for i in (0..data.len()).reverse() {
+		for i in (0..data.len()).rev() {
 			let old_content = data[i];
 			data[i] = old_content ^ num;
 			// black magic.. no idea how it works. its just transcriped it from the
@@ -102,9 +101,9 @@ impl ShnReader {
 	}
 
 	fn read_schema<T: Read>(source: &mut T,
-							column_count: u32,
-							expected_len: i32,
-							enc: &Encoding) -> Result<ShnSchema> {
+				column_count: u32,
+				expected_len: i32,
+				enc: &Encoding) -> Result<ShnSchema> {
 		let mut columns = Vec::with_capacity(column_count as usize);
 		let mut len = 2; // because of that intrinsic row.
 		// This one seems to be intrinsic. I don't actually think it holds any valuable data or

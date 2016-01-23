@@ -1,7 +1,6 @@
 extern crate encoding;
 extern crate byteorder;
 
-mod iterex;
 mod shn;
 mod shn_reader;
 
