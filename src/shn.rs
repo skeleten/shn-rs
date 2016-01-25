@@ -16,8 +16,10 @@ pub fn decrypt(data: &mut [u8]) {
     for i in (0..data.len()).rev() {
 	let old_content = data[i];
 	data[i] = old_content ^ num;
-	// black magic.. no idea how it works. its just transcriped it from the
-	// original version from Cedric.. this really needs some cleanup
+	/* black magic.. no idea how it works. its just transcriped it from the
+	 * original version from Cedric.. this really needs some cleanup
+         * It seems, however to be symetrical.
+         */
 	let mut num3 = Wrapping(i as u8);
 	num3 = num3 & Wrapping(15);
 	num3 = num3 + Wrapping(0x55);
@@ -90,6 +92,7 @@ impl ShnDataType {
 }
 
 impl ShnCell {
+    /// Returns the matching `ShnDataType`
     pub fn data_type(&self) -> ShnDataType {
 	match self {
 	    &ShnCell::StringFixedLen(_)		=> ShnDataType::StringFixedLen,
@@ -106,6 +109,7 @@ impl ShnCell {
 }
 
 #[derive(Clone, PartialEq, Debug)]
+/// Represents a column in the SHN table.
 pub struct ShnColumn {
     pub name:		String,
     pub data_type:	ShnDataType,
