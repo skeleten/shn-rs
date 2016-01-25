@@ -14,7 +14,7 @@ pub use shn::{
     ShnRow,
     ShnFile,
     ShnError,
-    decrypt,
+    decrypt as shn_decrypt,
 };
 
 pub use shn_reader::ShnReader;

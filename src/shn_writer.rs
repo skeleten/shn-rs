@@ -56,9 +56,10 @@ impl ShnWriter {
                        -> Result<()> 
                        where T: Write + WriteBytesExt {
         let schema = file.schema.clone();
-        /* We want to skip the first item as it is only a pseudo-column that does not in fact
-         * appear within the specification of the file. Still no idea as to why it is there.
-         * see ShnReader::read_schema in shn.rs for more information
+        /* We want to skip the first item as it is only a pseudo-column that 
+         * does not in fact appear within the specification of the file. Still 
+         * no idea as to why it is there. see ShnReader::read_schema in shn.rs 
+         * for more information
          */
         let mut iter = schema.columns.iter();
         iter.next();
@@ -103,7 +104,10 @@ impl ShnWriter {
         Ok(())
     }
 
-    fn write_cell<T>(cell: &ShnCell, data_length: i32, enc: &Encoding, writer: &mut T)
+    fn write_cell<T>(cell: &ShnCell, 
+                     data_length: i32, 
+                     enc: &Encoding, 
+                     writer: &mut T) 
                      -> Result<()>
                      where T: Write + WriteBytesExt {
         match cell {

@@ -3,6 +3,7 @@ use std::io::Read;
 
 use byteorder::ReadBytesExt;
 use encoding::{Encoding, DecoderTrap };
+use encoding::types::EncodingRef;
 use ::std::num::Wrapping;
 
 pub const SHN_CRYPT_HEADER_LEN: usize = 0x20;
@@ -92,15 +93,24 @@ impl ShnDataType {
 impl ShnCell {
     pub fn data_type(&self) -> ShnDataType {
 	match self {
-	    &ShnCell::StringFixedLen(_)		=> ShnDataType::StringFixedLen,
-	    &ShnCell::StringZeroTerminated(_)	=> ShnDataType::StringZeroTerminated,
-	    &ShnCell::Byte(_)			=> ShnDataType::Byte,
-	    &ShnCell::SignedByte(_)		=> ShnDataType::SignedByte,
-	    &ShnCell::SignedShort(_)		=> ShnDataType::SignedShort,
-	    &ShnCell::UnsignedShort(_)		=> ShnDataType::UnsignedShort,
-	    &ShnCell::SignedInteger(_)		=> ShnDataType::SignedInteger,
-	    &ShnCell::UnsignedInteger(_)	=> ShnDataType::UnsignedInteger,
-	    &ShnCell::SingleFloatingPoint(_)	=> ShnDataType::SingleFloatingPoint,
+	    &ShnCell::StringFixedLen(_)	
+                => ShnDataType::StringFixedLen,
+	    &ShnCell::StringZeroTerminated(_)
+                => ShnDataType::StringZeroTerminated,
+	    &ShnCell::Byte(_)
+                => ShnDataType::Byte,
+	    &ShnCell::SignedByte(_)
+                => ShnDataType::SignedByte,
+	    &ShnCell::SignedShort(_)
+                => ShnDataType::SignedShort,
+	    &ShnCell::UnsignedShort(_)
+                => ShnDataType::UnsignedShort,
+	    &ShnCell::SignedInteger(_)
+                => ShnDataType::SignedInteger,
+	    &ShnCell::UnsignedInteger(_)
+                => ShnDataType::UnsignedInteger,
+	    &ShnCell::SingleFloatingPoint(_)
+                => ShnDataType::SingleFloatingPoint,
 	}
     }
 }
@@ -185,23 +195,27 @@ impl ShnColumn {
 	}
     }
     
-    pub fn read<T>(&self, cursor: &mut T, enc: &Encoding) -> Result<ShnCell>
+    pub fn read<T>(&self, cursor: &mut T, enc: &EncodingRef) -> Result<ShnCell>
 	where T: Read {
 	match self.data_type {
 	    ShnDataType::StringFixedLen => {
 		let mut buf = vec![0; self.data_length as usize];
-		try!(cursor.read(&mut buf[..]).map_err(|_| ShnError::InvalidFile));
-		let str = try!(enc.decode(&buf[..], DecoderTrap::Ignore).map_err(|e| {
-		    println!("error while decoding: {:?}", e);
-		    ShnError::InvalidEncoding
-		}));
-		Ok(ShnCell::StringFixedLen(str.trim_matches('\u{0}').to_string()))
+		try!(cursor.read(&mut buf[..])
+                     .map_err(|_| ShnError::InvalidFile));
+		let str = try!(enc.decode(&buf[..], DecoderTrap::Ignore)
+                               .map_err(|e| {
+		                   println!("error while decoding: {:?}", e);
+		                   ShnError::InvalidEncoding
+		               }));
+		Ok(ShnCell::StringFixedLen(str.trim_matches('\u{0}')
+                                           .to_string()))
 	    },
 	    ShnDataType::StringZeroTerminated => {
 		let mut buf = Vec::new();
 		loop {
 		    // testing
-		    let d = try!(cursor.read_u8().map_err(|_| ShnError::InvalidFile));
+		    let d = try!(cursor.read_u8()
+                                 .map_err(|_| ShnError::InvalidFile));
 		    if d == 0 { break; }
 		    buf.push(d);
 		}
@@ -209,33 +223,39 @@ impl ShnColumn {
 			       .map_err(|_| ShnError::InvalidEncoding));
 		Ok(ShnCell::StringZeroTerminated(str))
 	    },
-	    ShnDataType::Byte => {
-                
-		let d = try!(cursor.read_u8().map_err(|_| ShnError::InvalidFile));
+	    ShnDataType::Byte => {              
+		let d = try!(cursor.read_u8()
+                             .map_err(|_| ShnError::InvalidFile));
 		Ok(ShnCell::Byte(d))
 	    },
 	    ShnDataType::SignedByte => {
-		let d = try!(cursor.read_i8().map_err(|_| ShnError::InvalidFile));
+		let d = try!(cursor.read_i8()
+                             .map_err(|_| ShnError::InvalidFile));
 		Ok(ShnCell::SignedByte(d))
 	    },
 	    ShnDataType::SignedShort => {
-		let d = try!(cursor.read_i16::<Endianess>().map_err(|_| ShnError::InvalidFile));
+		let d = try!(cursor.read_i16::<Endianess>()
+                             .map_err(|_| ShnError::InvalidFile));
 		Ok(ShnCell::SignedShort(d))
 	    },
 	    ShnDataType::UnsignedShort => {
-		let d = try!(cursor.read_u16::<Endianess>().map_err(|_| ShnError::InvalidFile));
+		let d = try!(cursor.read_u16::<Endianess>()
+                             .map_err(|_| ShnError::InvalidFile));
 		Ok(ShnCell::UnsignedShort(d))
 	    },
 	    ShnDataType::SignedInteger => {
-		let d = try!(cursor.read_i32::<Endianess>().map_err(|_| ShnError::InvalidFile));
+		let d = try!(cursor.read_i32::<Endianess>()
+                             .map_err(|_| ShnError::InvalidFile));
 		Ok(ShnCell::SignedInteger(d))
 	    },
 	    ShnDataType::UnsignedInteger => {
-		let d = try!(cursor.read_u32::<Endianess>().map_err(|_| ShnError::InvalidFile));
+		let d = try!(cursor.read_u32::<Endianess>()
+                             .map_err(|_| ShnError::InvalidFile));
 		Ok(ShnCell::UnsignedInteger(d))
 	    },
 	    ShnDataType::SingleFloatingPoint => {
-		let d = try!(cursor.read_f32::<Endianess>().map_err(|_| ShnError::InvalidFile));
+		let d = try!(cursor.read_f32::<Endianess>()
+                             .map_err(|_| ShnError::InvalidFile));
 		Ok(ShnCell::SingleFloatingPoint(d))
 	    }
 	}
