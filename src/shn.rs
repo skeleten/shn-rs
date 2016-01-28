@@ -1,10 +1,5 @@
 use std::sync::Arc;
-use std::io::Read;
-
-use byteorder::ReadBytesExt;
-use encoding::{Encoding, DecoderTrap };
-use encoding::types::EncodingRef;
-use ::std::num::Wrapping;
+use std::num::Wrapping;
 
 pub const SHN_CRYPT_HEADER_LEN: usize = 0x20;
 
@@ -79,15 +74,15 @@ impl ShnDataType {
     /// Returns the lowest `id` matching the data type.
     pub fn to_id(&self) -> u32 {
         match *self {
-            ShnDataType::Byte => 1,
-            ShnDataType::UnsignedShort => 2,
-            ShnDataType::UnsignedInteger => 3,
-            ShnDataType::SingleFloatingPoint => 5,
-            ShnDataType::StringFixedLen => 9,
-            ShnDataType::SignedShort => 13,
-            ShnDataType::SignedByte => 20,
-            ShnDataType::SignedInteger => 22,
-            ShnDataType::StringZeroTerminated => 26,
+            ShnDataType::Byte                   => 1,
+            ShnDataType::UnsignedShort          => 2,
+            ShnDataType::UnsignedInteger        => 3,
+            ShnDataType::SingleFloatingPoint    => 5,
+            ShnDataType::StringFixedLen         => 9,
+            ShnDataType::SignedShort            => 13,
+            ShnDataType::SignedByte             => 20,
+            ShnDataType::SignedInteger          => 22,
+            ShnDataType::StringZeroTerminated   => 26,
         }
     }
 }
@@ -196,72 +191,6 @@ impl ShnColumn {
 	    name:		name.to_string(),
 	    data_type:		ShnDataType::SingleFloatingPoint,
 	    data_length:	4,
-	}
-    }
-    
-    pub fn read<T>(&self, cursor: &mut T, enc: &EncodingRef) -> Result<ShnCell>
-	where T: Read {
-	match self.data_type {
-	    ShnDataType::StringFixedLen => {
-		let mut buf = vec![0; self.data_length as usize];
-		try!(cursor.read(&mut buf[..])
-                     .map_err(|_| ShnError::InvalidFile));
-		let str = try!(enc.decode(&buf[..], DecoderTrap::Ignore)
-                               .map_err(|e| {
-		                   println!("error while decoding: {:?}", e);
-		                   ShnError::InvalidEncoding
-		               }));
-		Ok(ShnCell::StringFixedLen(str.trim_matches('\u{0}')
-                                           .to_string()))
-	    },
-	    ShnDataType::StringZeroTerminated => {
-		let mut buf = Vec::new();
-		loop {
-		    // testing
-		    let d = try!(cursor.read_u8()
-                                 .map_err(|_| ShnError::InvalidFile));
-		    if d == 0 { break; }
-		    buf.push(d);
-		}
-		let str = try!(enc.decode(&buf[..], DecoderTrap::Ignore)
-			       .map_err(|_| ShnError::InvalidEncoding));
-		Ok(ShnCell::StringZeroTerminated(str))
-	    },
-	    ShnDataType::Byte => {              
-		let d = try!(cursor.read_u8()
-                             .map_err(|_| ShnError::InvalidFile));
-		Ok(ShnCell::Byte(d))
-	    },
-	    ShnDataType::SignedByte => {
-		let d = try!(cursor.read_i8()
-                             .map_err(|_| ShnError::InvalidFile));
-		Ok(ShnCell::SignedByte(d))
-	    },
-	    ShnDataType::SignedShort => {
-		let d = try!(cursor.read_i16::<Endianess>()
-                             .map_err(|_| ShnError::InvalidFile));
-		Ok(ShnCell::SignedShort(d))
-	    },
-	    ShnDataType::UnsignedShort => {
-		let d = try!(cursor.read_u16::<Endianess>()
-                             .map_err(|_| ShnError::InvalidFile));
-		Ok(ShnCell::UnsignedShort(d))
-	    },
-	    ShnDataType::SignedInteger => {
-		let d = try!(cursor.read_i32::<Endianess>()
-                             .map_err(|_| ShnError::InvalidFile));
-		Ok(ShnCell::SignedInteger(d))
-	    },
-	    ShnDataType::UnsignedInteger => {
-		let d = try!(cursor.read_u32::<Endianess>()
-                             .map_err(|_| ShnError::InvalidFile));
-		Ok(ShnCell::UnsignedInteger(d))
-	    },
-	    ShnDataType::SingleFloatingPoint => {
-		let d = try!(cursor.read_f32::<Endianess>()
-                             .map_err(|_| ShnError::InvalidFile));
-		Ok(ShnCell::SingleFloatingPoint(d))
-	    }
 	}
     }
 }

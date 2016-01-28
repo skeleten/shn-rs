@@ -6,6 +6,7 @@ use super::shn::{
     ShnFile,
     ShnRow,
     ShnColumn,
+    ShnCell,
     ShnDataType,
     ShnError,
     decrypt,
@@ -74,14 +75,13 @@ impl ShnReader {
 	Ok(())
     }
 
-    fn read_row<T>(file: &mut ShnFile,
-		   reader: &mut Cursor<T>,
-		   enc: &EncodingRef) -> Result<ShnRow>
-	where T: AsRef<[u8]> {
+    fn read_row<T>(file: &mut ShnFile, reader: &mut T, enc: &EncodingRef)
+                   -> Result<ShnRow>
+                   where T: Read {
 	let mut data = Vec::new();
 	// don't ask me why..
 	for c in file.schema.columns.iter() {
-	    let d = try!(c.read(reader, enc));
+	    let d = try!(ShnReader::read_cell(reader, c, enc));
 	    data.push(d)
 	}
 	Ok(ShnRow {
@@ -145,6 +145,76 @@ impl ShnReader {
 		columns: columns,
                 default_len: expected_len,
 	    })
+	}
+    }
+
+    fn read_cell<T: Read>(source: &mut T,
+                          column: &ShnColumn,
+                          enc: &EncodingRef)
+                          -> Result<ShnCell> {
+        let cursor = source; // TODO: refactor this
+        match column.data_type {
+	    ShnDataType::StringFixedLen => {
+		let mut buf = vec![0; column.data_length as usize];
+		try!(cursor.read(&mut buf[..])
+                     .map_err(|_| ShnError::InvalidFile));
+		let str = try!(enc.decode(&buf[..], DecoderTrap::Ignore)
+                               .map_err(|e| {
+		                   println!("error while decoding: {:?}", e);
+		                   ShnError::InvalidEncoding
+		               }));
+		Ok(ShnCell::StringFixedLen(str.trim_matches('\u{0}')
+                                           .to_string()))
+	    },
+	    ShnDataType::StringZeroTerminated => {
+		let mut buf = Vec::new();
+		loop {
+		    // testing
+		    let d = try!(cursor.read_u8()
+                                 .map_err(|_| ShnError::InvalidFile));
+		    if d == 0 { break; }
+		    buf.push(d);
+                }
+		
+		let str = try!(enc.decode(&buf[..], DecoderTrap::Ignore)
+			       .map_err(|_| ShnError::InvalidEncoding));
+		Ok(ShnCell::StringZeroTerminated(str))
+	    },
+	    ShnDataType::Byte => {              
+		let d = try!(cursor.read_u8()
+                             .map_err(|_| ShnError::InvalidFile));
+		Ok(ShnCell::Byte(d))
+	    },
+	    ShnDataType::SignedByte => {
+		let d = try!(cursor.read_i8()
+                             .map_err(|_| ShnError::InvalidFile));
+		Ok(ShnCell::SignedByte(d))
+	    },
+	    ShnDataType::SignedShort => {
+		let d = try!(cursor.read_i16::<Endianess>()
+                             .map_err(|_| ShnError::InvalidFile));
+		Ok(ShnCell::SignedShort(d))
+	    },
+	    ShnDataType::UnsignedShort => {
+		let d = try!(cursor.read_u16::<Endianess>()
+                             .map_err(|_| ShnError::InvalidFile));
+		Ok(ShnCell::UnsignedShort(d))
+	    },
+	    ShnDataType::SignedInteger => {
+		let d = try!(cursor.read_i32::<Endianess>()
+                             .map_err(|_| ShnError::InvalidFile));
+		Ok(ShnCell::SignedInteger(d))
+	    },
+	    ShnDataType::UnsignedInteger => {
+		let d = try!(cursor.read_u32::<Endianess>()
+                             .map_err(|_| ShnError::InvalidFile));
+		Ok(ShnCell::UnsignedInteger(d))
+	    },
+	    ShnDataType::SingleFloatingPoint => {
+		let d = try!(cursor.read_f32::<Endianess>()
+                             .map_err(|_| ShnError::InvalidFile));
+		Ok(ShnCell::SingleFloatingPoint(d))
+	    }
 	}
     }
 }
