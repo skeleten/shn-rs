@@ -25,7 +25,6 @@ impl ShnWriter {
         let header = file.header;
         let schema = file.schema.clone();
         let data = &file.data;
-        
         try!(writer.write_all(&crypt_header[..])
              .map_err(|_| ShnError::InvalidFile));
 
@@ -46,19 +45,19 @@ impl ShnWriter {
 
         let mut buf = buf_wrt.into_inner();
         decrypt(&mut buf[..]);
-        
+
         try!(writer.write_all(&buf[..])
              .map_err(|_| ShnError::InvalidFile));
         Ok(())
     }
-    
-    fn write_schema<T>(file: &ShnFile, enc: &Encoding, writer: &mut T) 
-                       -> Result<()> 
+
+    fn write_schema<T>(file: &ShnFile, enc: &Encoding, writer: &mut T)
+                       -> Result<()>
                        where T: Write + WriteBytesExt {
         let schema = file.schema.clone();
-        /* We want to skip the first item as it is only a pseudo-column that 
-         * does not in fact appear within the specification of the file. Still 
-         * no idea as to why it is there. see ShnReader::read_schema in shn.rs 
+        /* We want to skip the first item as it is only a pseudo-column that
+         * does not in fact appear within the specification of the file. Still
+         * no idea as to why it is there. see ShnReader::read_schema in shn.rs
          * for more information
          */
         let mut iter = schema.columns.iter();
@@ -69,7 +68,7 @@ impl ShnWriter {
             try!(enc.encode_to(&column.name, EncoderTrap::Strict, &mut buf)
                  .map_err(|_| ShnError::InvalidEncoding));
             // Fill in the rest of the 48 bytes with 0's.
-            for _ in 48..buf.len() { buf.push(0); };     
+            for _ in 48..buf.len() { buf.push(0); };
             let ctype = column.data_type.to_id();
             let clen = column.data_length;
             // TODO: Better enums!

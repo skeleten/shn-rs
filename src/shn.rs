@@ -10,20 +10,20 @@ pub type Endianess = ::byteorder::LittleEndian;
 pub fn decrypt(data: &mut [u8]) {
     let mut num = data.len() as u8;
     for i in (0..data.len()).rev() {
-	let old_content = data[i];
-	data[i] = old_content ^ num;
-	/* black magic.. no idea how it works. its just transcriped it from the
-	 * original version from Cedric.. this really needs some cleanup
+	      let old_content = data[i];
+	      data[i] = old_content ^ num;
+	      /* black magic.. no idea how it works. its just transcriped it from the
+	       * original version from Cedric.. this really needs some cleanup
          * It seems, however to be symetrical.
          */
-	let mut num3 = Wrapping(i as u8);
-	num3 = num3 & Wrapping(15);
-	num3 = num3 + Wrapping(0x55);
-	num3 = num3 ^ Wrapping(i as u8) * Wrapping(11);
-	num3 = num3 ^ Wrapping(num);
-	num3 = num3 ^ Wrapping(170);
-	let Wrapping(x) = num3;
-	num = x;
+	      let mut num3 = Wrapping(i as u8);
+	      num3 = num3 & Wrapping(15);
+	      num3 = num3 + Wrapping(0x55);
+	      num3 = num3 ^ Wrapping(i as u8) * Wrapping(11);
+	      num3 = num3 ^ Wrapping(num);
+	      num3 = num3 ^ Wrapping(170);
+	      let Wrapping(x) = num3;
+	      num = x;
     }
 }
 
@@ -58,18 +58,18 @@ pub enum ShnCell {
 impl ShnDataType {
     /// Returns the `ShnDataType` matching `id` 
     pub fn from_id(id: u32) -> ShnDataType {
-	match id {
-	    1 | 12 | 16		=> ShnDataType::Byte,
-	    2			=> ShnDataType::UnsignedShort,
-	    3 | 11 | 18 | 27	=> ShnDataType::UnsignedInteger,
-	    5			=> ShnDataType::SingleFloatingPoint,
-	    9 | 24		=> ShnDataType::StringFixedLen,
-	    13 | 21		=> ShnDataType::SignedShort,
-	    20			=> ShnDataType::SignedByte,
-	    22			=> ShnDataType::SignedInteger,
-	    26			=> ShnDataType::StringZeroTerminated,
-	    _			=> unimplemented!(),
-	}
+	      match id {
+	          1 | 12 | 16		=> ShnDataType::Byte,
+	          2			=> ShnDataType::UnsignedShort,
+	          3 | 11 | 18 | 27	=> ShnDataType::UnsignedInteger,
+	          5			=> ShnDataType::SingleFloatingPoint,
+	          9 | 24		=> ShnDataType::StringFixedLen,
+	          13 | 21		=> ShnDataType::SignedShort,
+	          20			=> ShnDataType::SignedByte,
+	          22			=> ShnDataType::SignedInteger,
+	          26			=> ShnDataType::StringZeroTerminated,
+	          _			=> unimplemented!(),
+	      }
     }
     /// Returns the lowest `id` matching the data type.
     pub fn to_id(&self) -> u32 {
@@ -85,31 +85,44 @@ impl ShnDataType {
             ShnDataType::StringZeroTerminated   => 26,
         }
     }
+
+    pub fn default_length(&self) -> usize {
+        match *self {
+            ShnDataType::SignedByte |
+            ShnDataType::Byte                   => 1,
+            ShnDataType::SignedShort |
+            ShnDataType::UnsignedShort          => 2,
+            ShnDataType::SignedInteger |
+            ShnDataType::UnsignedInteger        => 4,
+            ShnDataType::SingleFloatingPoint    => 4,
+            _                                   => 0,
+        }
+    }
 }
 
 impl ShnCell {
-    /// Returns the matching `ShnDataType`
+    // Returns the matching `ShnDataType`
     pub fn data_type(&self) -> ShnDataType {
-	match self {
-	    &ShnCell::StringFixedLen(_)	
+	      match self {
+	          &ShnCell::StringFixedLen(_)	
                 => ShnDataType::StringFixedLen,
-	    &ShnCell::StringZeroTerminated(_)
+	          &ShnCell::StringZeroTerminated(_)
                 => ShnDataType::StringZeroTerminated,
-	    &ShnCell::Byte(_)
+	          &ShnCell::Byte(_)
                 => ShnDataType::Byte,
-	    &ShnCell::SignedByte(_)
+	          &ShnCell::SignedByte(_)
                 => ShnDataType::SignedByte,
-	    &ShnCell::SignedShort(_)
+	          &ShnCell::SignedShort(_)
                 => ShnDataType::SignedShort,
-	    &ShnCell::UnsignedShort(_)
+	          &ShnCell::UnsignedShort(_)
                 => ShnDataType::UnsignedShort,
-	    &ShnCell::SignedInteger(_)
+	          &ShnCell::SignedInteger(_)
                 => ShnDataType::SignedInteger,
-	    &ShnCell::UnsignedInteger(_)
+	          &ShnCell::UnsignedInteger(_)
                 => ShnDataType::UnsignedInteger,
-	    &ShnCell::SingleFloatingPoint(_)
+	          &ShnCell::SingleFloatingPoint(_)
                 => ShnDataType::SingleFloatingPoint,
-	}
+	      }
     }
 }
 
@@ -123,75 +136,75 @@ pub struct ShnColumn {
 
 impl ShnColumn {
     pub fn new_string_fixed_len(name: &str, len: i32) -> Self {
-	ShnColumn {
-	    name:		name.to_string(),
-	    data_type:		ShnDataType::StringFixedLen,
-	    data_length:	len,
-	}
+	      ShnColumn {
+	          name:		name.to_string(),
+	          data_type:		ShnDataType::StringFixedLen,
+	          data_length:	len,
+	      }
     }
     
     pub fn new_string_terminated(name: &str) -> Self {
-	ShnColumn {
-	    name:		name.to_string(),
-	    data_type:		ShnDataType::StringZeroTerminated,
-	    data_length:	0,
-	}
+	      ShnColumn {
+	          name:		name.to_string(),
+	          data_type:		ShnDataType::StringZeroTerminated,
+	          data_length:	0,
+	      }
     }
     
     pub fn new_byte(name: &str) -> Self {
-	ShnColumn {
-	    name:		name.to_string(),
-	    data_type:		ShnDataType::Byte,
-	    data_length:	1,
-	}
+	      ShnColumn {
+	          name:		name.to_string(),
+	          data_type:		ShnDataType::Byte,
+	          data_length:	1,
+	      }
     }
     
     pub fn new_signed_byte(name: &str) -> Self {
-	ShnColumn {
-	    name:		name.to_string(),
-	    data_type:		ShnDataType::SignedByte,
-	    data_length:	1,
-	}
+	      ShnColumn {
+	          name:		name.to_string(),
+	          data_type:		ShnDataType::SignedByte,
+	          data_length:	1,
+	      }
     }
     
     pub fn new_unsigned_short(name: &str) -> Self {
-	ShnColumn {
-	    name:		name.to_string(),
-	    data_type:		ShnDataType::UnsignedShort,
-	    data_length:	2,
-	}
+	      ShnColumn {
+	          name:		name.to_string(),
+	          data_type:		ShnDataType::UnsignedShort,
+	          data_length:	2,
+	      }
     }
     
     pub fn new_signed_short(name: &str) -> Self {
-	ShnColumn {
-	    name:		name.to_string(),
-	    data_type:		ShnDataType::SignedShort,
-	    data_length:	2,
-	}
+	      ShnColumn {
+	          name:		name.to_string(),
+	          data_type:		ShnDataType::SignedShort,
+	          data_length:	2,
+	      }
     }
     
     pub fn new_unsigned_integer(name: &str) -> Self {
-	ShnColumn {
-	    name:		name.to_string(),
-	    data_type:		ShnDataType::UnsignedInteger,
-	    data_length:	4,
-	}
+	      ShnColumn {
+	          name:		name.to_string(),
+	          data_type:		ShnDataType::UnsignedInteger,
+	          data_length:	4,
+	      }
     }
     
     pub fn new_signed_integer(name: &str) -> Self {
-	ShnColumn {
-	    name:		name.to_string(),
-	    data_type:		ShnDataType::SignedInteger,
-	    data_length:	4,
-	}
+	      ShnColumn {
+	          name:		name.to_string(),
+	          data_type:		ShnDataType::SignedInteger,
+	          data_length:	4,
+	      }
     }
     
     pub fn new_single_floating_point(name: &str) -> Self {
-	ShnColumn {
-	    name:		name.to_string(),
-	    data_type:		ShnDataType::SingleFloatingPoint,
-	    data_length:	4,
-	}
+	      ShnColumn {
+	          name:		name.to_string(),
+	          data_type:		ShnDataType::SingleFloatingPoint,
+	          data_length:	4,
+	      }
     }
 }
 
@@ -203,10 +216,10 @@ pub struct ShnSchema {
 
 impl ShnSchema {
     pub fn new() -> Self {
-	ShnSchema {
-	    columns:	Vec::new(),
+	      ShnSchema {
+	          columns:	Vec::new(),
             default_len: 0,
-	}
+	      }
     }
 
     pub fn calculate_record_length(&self) -> i32 {
@@ -217,25 +230,25 @@ impl ShnSchema {
 }
 
 pub struct ShnRow {
-    pub schema:		Arc<ShnSchema>,
+    pub schema:       Arc<ShnSchema>,
     pub data:	        Vec<ShnCell>
 }
 
 pub struct ShnFile {
     pub crypt_header:	[u8; SHN_CRYPT_HEADER_LEN],
     pub header:		u32, // or was it u16?
-    pub schema:	        Arc<ShnSchema>,
-    pub data:		Vec<ShnRow>
+    pub schema:	  Arc<ShnSchema>,
+    pub data:     Vec<ShnRow>
 }
 
 impl ShnFile {
     pub fn append_row(&mut self, row: ShnRow) -> Result<()> {
-	if row.schema != self.schema {
-	    Err(ShnError::InvalidSchema)
-	} else {
-	    self.data.push(row);
-	    Ok(())
-	}
+	      if row.schema != self.schema {
+	          Err(ShnError::InvalidSchema)
+	      } else {
+	          self.data.push(row);
+	          Ok(())
+	      }
     }
 }
 
