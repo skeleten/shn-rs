@@ -15,7 +15,6 @@ mod shn_reader;
 mod shn_writer;
 
 pub use shn::{
-    SHN_CRYPT_HEADER_LEN,
     ShnDataType,
     ShnCell,
     ShnColumn,
@@ -23,7 +22,6 @@ pub use shn::{
     ShnRow,
     ShnFile,
     ShnError,
-    decrypt as shn_decrypt,
 };
 
 pub use shn_reader::ShnReader;
