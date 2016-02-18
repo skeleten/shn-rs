@@ -11,7 +11,7 @@ use super::shn::{
 use ::std::io::{ Write, Cursor };
 
 use ::byteorder::WriteBytesExt;
-use ::encoding::{Encoding, EncoderTrap };
+use ::encoding::{Encoding, EncoderTrap, EncodingRef };
 
 // TODO: I might want to move this to a trait instead.
 /// Provides functions for writing a `ShnFile` to a `Write`
@@ -19,7 +19,7 @@ pub struct ShnWriter;
 
 impl ShnWriter {
     /// Writes the `ShnFile` to the `Write`
-    pub fn write_to<T>(file: &ShnFile, enc: &Encoding, writer: &mut T)
+    pub fn write_to<T>(file: &ShnFile, enc: &EncodingRef, writer: &mut T)
                        -> Result<()>
                        where T: Write + WriteBytesExt {
         // let's decompose our file for now
@@ -53,7 +53,7 @@ impl ShnWriter {
         Ok(())
     }
 
-    fn write_schema<T>(file: &ShnFile, enc: &Encoding, writer: &mut T)
+    fn write_schema<T>(file: &ShnFile, enc: &EncodingRef, writer: &mut T)
                        -> Result<()>
                        where T: Write + WriteBytesExt {
         let schema = file.schema.clone();
@@ -84,7 +84,7 @@ impl ShnWriter {
         Ok(())
     }
 
-    fn write_rows<T>(file: &ShnFile, enc: &Encoding, writer: &mut T)
+    fn write_rows<T>(file: &ShnFile, enc: &EncodingRef, writer: &mut T)
                      -> Result<()>
                      where T: Write + WriteBytesExt {
         for row in &file.data {
@@ -93,7 +93,7 @@ impl ShnWriter {
         Ok(())
     }
 
-    fn write_row<T>(row: &ShnRow, enc: &Encoding, writer: &mut T)
+    fn write_row<T>(row: &ShnRow, enc: &EncodingRef, writer: &mut T)
                     -> Result<()>
                     where T: Write + WriteBytesExt {
         for i in 0..row.schema.columns.len() {
@@ -107,7 +107,7 @@ impl ShnWriter {
 
     fn write_cell<T>(cell: &ShnCell,
                      data_length: i32,
-                     enc: &Encoding,
+                     enc: &EncodingRef,
                      writer: &mut T)
                      -> Result<()>
                      where T: Write + WriteBytesExt {

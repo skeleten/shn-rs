@@ -24,5 +24,19 @@ pub use shn::{
     ShnError,
 };
 
-pub use shn_reader::ShnReader;
-pub use shn_writer::ShnWriter;
+/// Reads a `ShnFile` from the provided input, using the given encoding
+/// for any strings
+pub fn read_from<S: std::io::Read>(source: &mut S,
+                                   encoding: &encoding::EncodingRef)
+                                   -> shn::Result<ShnFile> {
+    shn_reader::ShnReader::read_from(source, encoding)
+}
+
+/// Writes the `ShnFile` to the provided output, using the given encoding
+/// for any strings.
+pub fn write_to<D: std::io::Write>(dest: &mut D,
+                                   file: &shn::ShnFile,
+                                   encoding: &encoding::EncodingRef)
+                                   -> shn::Result<()> {
+    shn_writer::ShnWriter::write_to(file, encoding, dest)
+}
