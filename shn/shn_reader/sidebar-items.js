@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["ShnReader","Functions for reading an `ShnFile` from a `Read`"]]});
