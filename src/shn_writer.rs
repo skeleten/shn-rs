@@ -1,24 +1,26 @@
-use super::shn::{ 
-    Endianess, 
+use super::shn::{
+    Endianess,
     Result,
     ShnFile,
     ShnRow,
     ShnColumn,
     ShnCell,
-    ShnError, 
+    ShnError,
     decrypt
 };
 use ::std::io::{ Write, Cursor };
 
-use ::byteorder::WriteBytesExt; 
+use ::byteorder::WriteBytesExt;
 use ::encoding::{Encoding, EncoderTrap };
 
 // TODO: I might want to move this to a trait instead.
+/// Provides functions for writing a `ShnFile` to a `Write`
 pub struct ShnWriter;
 
 impl ShnWriter {
-    pub fn write_to<T>(file: &ShnFile, enc: &Encoding, writer: &mut T) 
-                       -> Result<()> 
+    /// Writes the `ShnFile` to the `Write`
+    pub fn write_to<T>(file: &ShnFile, enc: &Encoding, writer: &mut T)
+                       -> Result<()>
                        where T: Write + WriteBytesExt {
         // let's decompose our file for now
         let crypt_header = &file.crypt_header;
@@ -35,7 +37,7 @@ impl ShnWriter {
              .map_err(|_| ShnError::InvalidFile));
         try!(buf_wrt.write_u32::<Endianess>(data.len() as u32)
              .map_err(|_| ShnError::InvalidFile));
-        try!(buf_wrt.write_i32::<Endianess>(schema.default_len)
+        try!(buf_wrt.write_i32::<Endianess>(schema.calculate_record_length())
              .map_err(|_| ShnError::InvalidFile));
         try!(buf_wrt.write_u32::<Endianess>(schema.columns.len() as u32)
              .map_err(|_| ShnError::InvalidFile));
@@ -85,7 +87,7 @@ impl ShnWriter {
     fn write_rows<T>(file: &ShnFile, enc: &Encoding, writer: &mut T)
                      -> Result<()>
                      where T: Write + WriteBytesExt {
-        for row in file.data.iter() {
+        for row in &file.data {
             try!(ShnWriter::write_row(row, enc, writer));
         }
         Ok(())
@@ -103,35 +105,35 @@ impl ShnWriter {
         Ok(())
     }
 
-    fn write_cell<T>(cell: &ShnCell, 
-                     data_length: i32, 
-                     enc: &Encoding, 
-                     writer: &mut T) 
+    fn write_cell<T>(cell: &ShnCell,
+                     data_length: i32,
+                     enc: &Encoding,
+                     writer: &mut T)
                      -> Result<()>
                      where T: Write + WriteBytesExt {
-        match cell {
-            &ShnCell::Byte(b) => 
+        match *cell {
+            ShnCell::Byte(b) =>
                 try!(writer.write_u8(b)
                      .map_err(|_| ShnError::InvalidFile)),
-            &ShnCell::SignedByte(b) => 
+            ShnCell::SignedByte(b) =>
                 try!(writer.write_i8(b)
                      .map_err(|_| ShnError::InvalidFile)),
-            &ShnCell::UnsignedShort(s) => 
+            ShnCell::UnsignedShort(s) =>
                 try!(writer.write_u16::<Endianess>(s)
                      .map_err(|_| ShnError::InvalidFile)),
-            &ShnCell::SignedShort(s) => 
+            ShnCell::SignedShort(s) =>
                 try!(writer.write_i16::<Endianess>(s)
                      .map_err(|_| ShnError::InvalidFile)),
-            &ShnCell::UnsignedInteger(i) => 
+            ShnCell::UnsignedInteger(i) =>
                 try!(writer.write_u32::<Endianess>(i)
                      .map_err(|_| ShnError::InvalidFile)),
-            &ShnCell::SignedInteger(i) => 
+            ShnCell::SignedInteger(i) =>
                 try!(writer.write_i32::<Endianess>(i)
                      .map_err(|_| ShnError::InvalidFile)),
-            &ShnCell::SingleFloatingPoint(f) => 
+            ShnCell::SingleFloatingPoint(f) =>
                 try!(writer.write_f32::<Endianess>(f)
                      .map_err(|_| ShnError::InvalidFile)),
-            &ShnCell::StringFixedLen(ref st) => {
+            ShnCell::StringFixedLen(ref st) => {
                 let mut buf = Vec::with_capacity(data_length as usize);
                 try!(enc.encode_to(&st, EncoderTrap::Strict, &mut buf)
                      .map_err(|_| ShnError::InvalidEncoding));
@@ -140,7 +142,7 @@ impl ShnWriter {
                 try!(writer.write_all(&buf[..])
                      .map_err(|_| ShnError::InvalidFile));
             },
-            &ShnCell::StringZeroTerminated(ref st) => {
+            ShnCell::StringZeroTerminated(ref st) => {
                 let mut buf = Vec::new();
                 try!(enc.encode_to(&st, EncoderTrap::Strict, &mut buf)
                      .map_err(|_| ShnError::InvalidEncoding));
