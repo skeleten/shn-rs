@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="Source to the Rust file `/home/skeleten/Source/skeleten/shn-rs/src/lib.rs`.">
+    <meta name="description" content="Source to the Rust file `src/lib.rs`.">
     <meta name="keywords" content="rust, rustlang, rust-lang">
 
     <title>lib.rs.html -- source</title>
@@ -83,10 +83,18 @@
 <span id="40">40</span>
 <span id="41">41</span>
 <span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
 </pre><pre class='rust '>
 <span class='doccomment'>//! # shn-rs</span>
 <span class='doccomment'>//! provides an api to work with `*.shn` files found in the game `Fiesta Online`</span>
 <span class='doccomment'>//! Said files are statically typed data tables with a less then ideal format.</span>
+<span class='doccomment'>//!</span>
+<span class='doccomment'>//! This library contains methods for easily reading and writing those files,</span>
+<span class='doccomment'>//! you should parse them into a different format for actual use though, since</span>
+<span class='doccomment'>//! the structures are not very ergonomic for actually using the data.</span>
 
 <span class='attribute'>#<span class='op'>!</span>[<span class='ident'>feature</span>(<span class='ident'>plugin</span>)]</span>
 <span class='attribute'>#<span class='op'>!</span>[<span class='ident'>plugin</span>(<span class='ident'>clippy</span>)]</span>

@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="Source to the Rust file `/home/skeleten/Source/skeleten/shn-rs/src/shn.rs`.">
+    <meta name="description" content="Source to the Rust file `src/shn.rs`.">
     <meta name="keywords" content="rust, rustlang, rust-lang">
 
     <title>shn.rs.html -- source</title>
@@ -351,6 +351,16 @@
 <span id="308">308</span>
 <span id="309">309</span>
 <span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
 </pre><pre class='rust '>
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>sync</span>::<span class='ident'>Arc</span>;
 <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>num</span>::<span class='ident'>Wrapping</span>;
@@ -433,15 +443,25 @@
     <span class='doccomment'>/// Returns the `ShnDataType` matching `id`</span>
     <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>from_id</span>(<span class='ident'>id</span>: <span class='ident'>u32</span>) <span class='op'>-&gt;</span> <span class='ident'>ShnDataType</span> {
 	      <span class='kw'>match</span> <span class='ident'>id</span> {
-	          <span class='number'>1</span> <span class='op'>|</span> <span class='number'>12</span> <span class='op'>|</span> <span class='number'>16</span>		<span class='op'>=&gt;</span> <span class='ident'>ShnDataType</span>::<span class='ident'>Byte</span>,
-	          <span class='number'>2</span>			<span class='op'>=&gt;</span> <span class='ident'>ShnDataType</span>::<span class='ident'>UnsignedShort</span>,
-	          <span class='number'>3</span> <span class='op'>|</span> <span class='number'>11</span> <span class='op'>|</span> <span class='number'>18</span> <span class='op'>|</span> <span class='number'>27</span>	<span class='op'>=&gt;</span> <span class='ident'>ShnDataType</span>::<span class='ident'>UnsignedInteger</span>,
-	          <span class='number'>5</span>			<span class='op'>=&gt;</span> <span class='ident'>ShnDataType</span>::<span class='ident'>SingleFloatingPoint</span>,
-	          <span class='number'>9</span> <span class='op'>|</span> <span class='number'>24</span>		<span class='op'>=&gt;</span> <span class='ident'>ShnDataType</span>::<span class='ident'>StringFixedLen</span>,
-	          <span class='number'>13</span> <span class='op'>|</span> <span class='number'>21</span>		<span class='op'>=&gt;</span> <span class='ident'>ShnDataType</span>::<span class='ident'>SignedShort</span>,
-	          <span class='number'>20</span>			<span class='op'>=&gt;</span> <span class='ident'>ShnDataType</span>::<span class='ident'>SignedByte</span>,
-	          <span class='number'>22</span>			<span class='op'>=&gt;</span> <span class='ident'>ShnDataType</span>::<span class='ident'>SignedInteger</span>,
-	          <span class='number'>26</span>			<span class='op'>=&gt;</span> <span class='ident'>ShnDataType</span>::<span class='ident'>StringZeroTerminated</span>,
+	          <span class='number'>1</span> <span class='op'>|</span> <span class='number'>12</span> <span class='op'>|</span> <span class='number'>16</span>
+                <span class='op'>=&gt;</span> <span class='ident'>ShnDataType</span>::<span class='ident'>Byte</span>,
+	          <span class='number'>2</span>
+                <span class='op'>=&gt;</span> <span class='ident'>ShnDataType</span>::<span class='ident'>UnsignedShort</span>,
+	          <span class='number'>3</span> <span class='op'>|</span> <span class='number'>11</span> <span class='op'>|</span> <span class='number'>18</span> <span class='op'>|</span> <span class='number'>27</span>
+                <span class='op'>=&gt;</span> <span class='ident'>ShnDataType</span>::<span class='ident'>UnsignedInteger</span>,
+	          <span class='number'>5</span>
+                <span class='op'>=&gt;</span> <span class='ident'>ShnDataType</span>::<span class='ident'>SingleFloatingPoint</span>,
+	          <span class='number'>9</span> <span class='op'>|</span> <span class='number'>24</span>
+                <span class='op'>=&gt;</span> <span class='ident'>ShnDataType</span>::<span class='ident'>StringFixedLen</span>,
+	          <span class='number'>13</span> <span class='op'>|</span> <span class='number'>21</span>
+                <span class='op'>=&gt;</span> <span class='ident'>ShnDataType</span>::<span class='ident'>SignedShort</span>,
+	          <span class='number'>20</span>
+                <span class='op'>=&gt;</span> <span class='ident'>ShnDataType</span>::<span class='ident'>SignedByte</span>,
+	          <span class='number'>22</span>
+                <span class='op'>=&gt;</span> <span class='ident'>ShnDataType</span>::<span class='ident'>SignedInteger</span>,
+	          <span class='number'>26</span>
+                <span class='op'>=&gt;</span> <span class='ident'>ShnDataType</span>::<span class='ident'>StringZeroTerminated</span>,
+
 	          _			<span class='op'>=&gt;</span> <span class='macro'>unimplemented</span><span class='macro'>!</span>(),
 	      }
     }
