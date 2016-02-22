@@ -79,15 +79,25 @@ impl ShnDataType {
     /// Returns the `ShnDataType` matching `id`
     pub fn from_id(id: u32) -> ShnDataType {
 	      match id {
-	          1 | 12 | 16		=> ShnDataType::Byte,
-	          2			=> ShnDataType::UnsignedShort,
-	          3 | 11 | 18 | 27	=> ShnDataType::UnsignedInteger,
-	          5			=> ShnDataType::SingleFloatingPoint,
-	          9 | 24		=> ShnDataType::StringFixedLen,
-	          13 | 21		=> ShnDataType::SignedShort,
-	          20			=> ShnDataType::SignedByte,
-	          22			=> ShnDataType::SignedInteger,
-	          26			=> ShnDataType::StringZeroTerminated,
+	          1 | 12 | 16
+                => ShnDataType::Byte,
+	          2
+                => ShnDataType::UnsignedShort,
+	          3 | 11 | 18 | 27
+                => ShnDataType::UnsignedInteger,
+	          5
+                => ShnDataType::SingleFloatingPoint,
+	          9 | 24
+                => ShnDataType::StringFixedLen,
+	          13 | 21
+                => ShnDataType::SignedShort,
+	          20
+                => ShnDataType::SignedByte,
+	          22
+                => ShnDataType::SignedInteger,
+	          26
+                => ShnDataType::StringZeroTerminated,
+
 	          _			=> unimplemented!(),
 	      }
     }

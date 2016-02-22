@@ -1,6 +1,10 @@
 //! # shn-rs
 //! provides an api to work with `*.shn` files found in the game `Fiesta Online`
 //! Said files are statically typed data tables with a less then ideal format.
+//!
+//! This library contains methods for easily reading and writing those files,
+//! you should parse them into a different format for actual use though, since
+//! the structures are not very ergonomic for actually using the data.
 
 #![feature(plugin)]
 #![plugin(clippy)]
