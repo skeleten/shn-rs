@@ -16,7 +16,7 @@ extern crate shn;
 extern crate encoding;
 
 fn main() {
-    let file = match std::fs::File::open(/* ... */) {
+    let file = match std::fs::File::open("path/to/file.shn") {
         Ok(file) => file,
         Err(_) => panic!();
     };
