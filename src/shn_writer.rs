@@ -11,7 +11,7 @@ use super::shn::{
 use ::std::io::{ Write, Cursor };
 
 use ::byteorder::WriteBytesExt;
-use ::encoding::{Encoding, EncoderTrap, EncodingRef };
+use ::encoding::{ EncoderTrap, EncodingRef };
 
 // TODO: I might want to move this to a trait instead.
 /// Provides functions for writing a `ShnFile` to a `Write`

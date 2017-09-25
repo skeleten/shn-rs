@@ -311,7 +311,7 @@ impl ShnFile {
 }
 
 /// Wrapper for errors within the `shn-rs` crate.
-#[allow(enum_variant_names, missing_docs)]
+#[allow(missing_docs)]
 #[derive(Debug)]
 pub enum ShnError {
     InvalidSchema,

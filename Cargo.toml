@@ -7,4 +7,3 @@ authors = ["skeleten <skele@ymail.com>"]
 encoding = "0.2"
 byteorder = "0.3"
 
-clippy = "*"

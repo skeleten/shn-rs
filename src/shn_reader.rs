@@ -15,10 +15,7 @@ use super::shn::{
 use ::std::io::{Read, Cursor };
 use ::std::sync::Arc;
 
-use ::encoding::{
-    Encoding,
-    DecoderTrap,
-};
+use encoding::DecoderTrap;
 use ::encoding::types::EncodingRef;
 use ::byteorder::ReadBytesExt;
 

@@ -6,9 +6,6 @@
 //! you should parse them into a different format for actual use though, since
 //! the structures are not very ergonomic for actually using the data.
 
-#![feature(plugin)]
-#![plugin(clippy)]
-
 #![deny(missing_docs)]
 
 extern crate encoding;
